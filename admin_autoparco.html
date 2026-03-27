@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>ARGO - Regia Autoparco</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+    <style>
+        :root {
+            --cri-red: #d64545;
+            --bg-color: #f4f7f6;
+            --text-color: #1e293b;
+            --font-main: 'Montserrat', sans-serif;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            margin: 0; padding: 20px; color: var(--text-color);
+        }
+
+        .container { max-width: 800px; margin: 0 auto; }
+        
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { color: var(--cri-red); margin-bottom: 5px; font-weight: 800; }
+        .header p { color: #64748b; font-size: 0.9rem; margin-top: 0; }
+
+        .login-box { text-align: center; margin-bottom: 20px; }
+        .btn-pin { background: #1e293b; color: white; padding: 10px 20px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; }
+
+        #admin-panel { display: none; }
+
+        .mezzo-card {
+            background: white; border-radius: 12px; padding: 15px; margin-bottom: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; flex-wrap: wrap; gap: 15px; align-items: center;
+        }
+
+        .mezzo-info { flex: 1; min-width: 200px; }
+        .mezzo-info h3 { margin: 0; font-size: 1.2rem; color: #0f172a; }
+        .mezzo-info p { margin: 4px 0 0 0; font-size: 0.85rem; color: #64748b; }
+
+        .mezzo-controls { display: flex; flex-direction: column; gap: 8px; flex: 2; min-width: 250px; }
+        
+        select, input {
+            padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; font-family: inherit; font-size: 0.9rem; width: 100%; box-sizing: border-box;
+        }
+
+        .btn-salva {
+            background: var(--cri-red); color: white; padding: 10px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;
+        }
+
+        #loading { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); z-index: 999; justify-content: center; align-items: center; font-weight: bold; font-size: 1.2rem; }
+    </style>
+</head>
+<body>
+
+    <div id="loading">⏳ Sincronizzazione in corso...</div>
+
+    <div class="container">
+        <div class="header">
+            <h1>ARGO - Regia Flotta</h1>
+            <p>Pannello di controllo Responsabile Autoparco</p>
+        </div>
+
+        <div class="login-box">
+            <button id="btn-login" class="btn-pin">🔒 Inserisci PIN Responsabile</button>
+        </div>
+
+        <div id="admin-panel">
+            <div id="lista-mezzi">Caricamento flotta...</div>
+        </div>
+    </div>
+
+    <script>
+        const PIN_SEGRETO = "V3icoli-"; // Stesso PIN della pagina difetti
+        
+        // INSERISCI QUI I DUE URL!
+        const URL_CSV_HUB = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRMtO9pbvrr-yz1xMwquFeonWlhrwz6R_01HXu0swxX6tqrNok0Xjr6KRfIdYRnnGx8ZvjIoN_9vMQi/pub?output=csv'; // Il CSV dell'HUB mezzi
+        const URL_API_APPSCRIPT = 'INCOLLA_QUI_L_URL_APP_WEB_DEL_PUNTO_6'; // Il link dello script che hai appena creato
+
+        let datiMezzi = [];
+
+        document.getElementById('btn-login').addEventListener('click', () => {
+            const pin = prompt("Inserisci PIN:");
+            if (pin === PIN_SEGRETO) {
+                document.querySelector('.login-box').style.display = 'none';
+                document.getElementById('admin-panel').style.display = 'block';
+                caricaDatiCSV();
+            } else {
+                alert("PIN Errato.");
+            }
+        });
+
+        function caricaDatiCSV() {
+            Papa.parse(URL_CSV_HUB + '&t=' + Date.now(), {
+                download: true,
+                header: true,
+                complete: function(results) {
+                    datiMezzi = results.data.filter(r => r['Sigla Radio'] && r['Sigla Radio'].trim() !== '');
+                    renderizzaMezzi();
+                }
+            });
+        }
+
+        function renderizzaMezzi() {
+            const container = document.getElementById('lista-mezzi');
+            container.innerHTML = '';
+
+            // Opzioni di stato basate sul tuo HUB
+            const opzioniStato = [
+                "OPERATIVO",
+                "GALLARATE CONV 1",
+                "GALLARATE CONV 2",
+                "SOMMA LOMBARDO",
+                "BACKUP CONV 1",
+                "BACKUP CONV 2",
+                "BACKUP CONV SOMMA L.DO",
+                "AGG. MXP",
+                "MANUTENZIONE",
+                "FUORI SERVIZIO"
+            ];
+
+            datiMezzi.forEach(mezzo => {
+                const sigla = mezzo['Sigla Radio'];
+                const statoAttuale = mezzo['Stato'] ? mezzo['Stato'].toUpperCase() : '';
+                const noteAttuali = mezzo['Note'] || '';
+
+                let opzioniHtml = opzioniStato.map(opt => 
+                    `<option value="${opt}" ${statoAttuale.includes(opt) ? 'selected' : ''}>${opt}</option>`
+                ).join('');
+
+                const card = document.createElement('div');
+                card.className = 'mezzo-card';
+                card.innerHTML = `
+                    <div class="mezzo-info">
+                        <h3>${sigla}</h3>
+                        <p>${mezzo['Modello'] || ''}</p>
+                        <p style="font-family: monospace;">${mezzo['Targa'] || ''}</p>
+                    </div>
+                    <div class="mezzo-controls">
+                        <select id="stato-${sigla}">${opzioniHtml}</select>
+                        <input type="text" id="note-${sigla}" value="${noteAttuali}" placeholder="Note (es. In officina da Mario)...">
+                        <button class="btn-salva" onclick="salvaMezzo('${sigla}')">💾 Salva Aggiornamento</button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        async function salvaMezzo(sigla) {
+            const nuovoStato = document.getElementById(`stato-${sigla}`).value;
+            const nuoveNote = document.getElementById(`note-${sigla}`).value;
+
+            document.getElementById('loading').style.display = 'flex';
+
+            const formData = new URLSearchParams();
+            formData.append('sigla', sigla);
+            formData.append('stato', nuovoStato);
+            formData.append('note', nuoveNote);
+
+            try {
+                // Inviamo la richiesta POST allo script di Google
+                await fetch(URL_API_APPSCRIPT, {
+                    method: 'POST',
+                    body: formData,
+                    mode: 'no-cors' // Essenziale per evitare blocchi CORS da GitHub a Google
+                });
+
+                setTimeout(() => {
+                    document.getElementById('loading').style.display = 'none';
+                    alert(`✅ ${sigla} aggiornato con successo! I monitor dell'HUB si aggiorneranno al prossimo ciclo.`);
+                }, 1000);
+
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                alert("❌ Errore di connessione.");
+            }
+        }
+    </script>
+</body>
+</html>

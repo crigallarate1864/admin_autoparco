@@ -44,7 +44,7 @@
             padding: 30px 20px 80px 20px;
         }
 
-        /* --- HEADER CONTROL TOWER (Elegante) --- */
+        /* --- HEADER CONTROL TOWER --- */
         .app-header { text-align: center; margin-bottom: 30px; }
         
         h1 {
@@ -108,10 +108,20 @@
         .targa-badge { display: inline-block; margin-top: 8px; background: #f1f5f9; padding: 4px 8px; border-radius: 6px; font-family: 'Courier New', monospace; font-weight: bold; font-size: 0.9rem; border: 1px solid #cbd5e1; }
         .mezzo-controls { display: flex; flex-direction: column; gap: 10px; flex: 2; min-width: 250px; }
         select, input { padding: 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-family: inherit; font-size: 0.95rem; width: 100%; box-sizing: border-box; background: #ffffff; color: #1e293b; font-weight: 500; }
+        
+        select option:disabled { color: #94a3b8; font-style: italic; background-color: #f8fafc; }
         select:focus, input:focus { outline: none; border-color: var(--cri-red); box-shadow: 0 0 0 3px rgba(214, 69, 69, 0.1); }
         .btn-salva { background: linear-gradient(135deg, var(--cri-red) 0%, var(--cri-red-dark) 100%); color: white; padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: 0.95rem; transition: all 0.2s; font-family: inherit; }
 
-        /* --- CSS SEGNALAZIONI (Difetti) --- */
+        /* --- CSS SEGNALAZIONI E KPI --- */
+        .kpi-container { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+        .kpi-card { flex: 1; min-width: 100px; background: #ffffff; border-radius: 16px; padding: 15px 10px; text-align: center; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 4px 12px rgba(0,0,0,0.02); }
+        .kpi-valore { font-size: 2.2rem; font-weight: 900; line-height: 1; margin-bottom: 6px; color: #1e293b; }
+        .kpi-label { font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+        .val-rosso { color: var(--cri-red); }
+        .val-giallo { color: #d97700; }
+        .val-verde { color: #10b981; }
+
         .btn-admin-action { background-color: #1e293b; color: white; padding: 12px 20px; font-size: 0.95rem; font-weight: 600; border-radius: 10px; border: none; width: 100%; margin-bottom: 20px; cursor: pointer; font-family: inherit; }
         .veicolo-group { background: #ffffff; border-radius: 16px; margin-bottom: 15px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.04); }
         .veicolo-titolo { display: flex; justify-content: space-between; align-items: center; padding: 18px 20px; cursor: pointer; user-select: none; background: #ffffff; }
@@ -186,6 +196,22 @@
 
             <div id="tab-segnalazioni" class="tab-content">
                 <button id="btn-toggle-risolti" class="btn-admin-action">📂 Visualizza Log Risolti</button>
+                
+                <div class="kpi-container" id="kpi-segnalazioni" style="display: none;">
+                    <div class="kpi-card">
+                        <div class="kpi-valore val-rosso" id="kpi-da-valutare">0</div>
+                        <div class="kpi-label">Da Valutare</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-valore val-giallo" id="kpi-in-carico">0</div>
+                        <div class="kpi-label">In Carico</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-valore" id="kpi-totali">0</div>
+                        <div class="kpi-label" id="kpi-label-totali">Totali Attive</div>
+                    </div>
+                </div>
+
                 <h3 id="titolo-sezione" style="color: #334155; margin-top: 5px; margin-bottom: 15px; text-align: center; font-size: 1.1rem;">Segnalazioni Attive</h3>
                 
                 <div id="listaDifetti">
@@ -213,7 +239,7 @@
 
         // Questi stati possono essere applicati a infiniti mezzi
         const statiIllimitati = [
-            "OPERATIVO", "IN MANUTENZIONE", "FUORI SERVIZIO"
+            "OPERATIVO", "MANUTENZIONE", "IN MANUTENZIONE", "FUORI USO", "FUORI SERVIZIO"
         ];
 
         // LOGICA TABS
@@ -231,7 +257,6 @@
                 document.getElementById('login-section').style.display = 'none';
                 document.getElementById('admin-panel').style.display = 'block';
                 
-                // Carica entrambi i DB
                 caricaDatiFlotta();
                 caricaDatiSegnalazioni();
             } else if (pin !== null) {
@@ -239,7 +264,6 @@
             }
         });
 
-        // Mostra overlay caricamento
         function setCaricamento(messaggio, stato) {
             document.getElementById('loading-text').innerText = messaggio;
             document.getElementById('loading').style.display = stato ? 'flex' : 'none';
@@ -269,8 +293,8 @@
 
             const opzioniStato = [
                 "OPERATIVO", "GALLARATE CONV 1", "GALLARATE CONV 2", "SOMMA LOMBARDO",
-                "BACKUP CONV 1", "BACKUP CONV 2", "BACKUP CONV SOMMA L.DO",
-                "IN MANUTENZIONE", "FUORI SERVIZIO"
+                "BACKUP CONV 1", "BACKUP CONV 2", "BACKUP CONV SOMMA L.DO", "AGG. MXP",
+                "MANUTENZIONE", "IN MANUTENZIONE", "FUORI SERVIZIO", "FUORI USO"
             ];
 
             datiMezzi.forEach(mezzo => {
@@ -299,41 +323,36 @@
                 container.appendChild(card);
             });
 
-            inizializzaLogicaScambio();
+            // Aggiungiamo l'event listener per la logica di ruba/slot
+            const tutteLeTendine = document.querySelectorAll('.select-stato');
+            tutteLeTendine.forEach(sel => sel.addEventListener('change', aggiornaDisponibilitaOpzioni));
+            
+            aggiornaDisponibilitaOpzioni();
         }
 
-        // --- LA LOGICA "RUBA SLOT" (Auto-Scambio) ---
-        let statiPrecedenti = {};
-
-        function inizializzaLogicaScambio() {
-            const tutteLeTendine = document.querySelectorAll('.select-stato');
+        function aggiornaDisponibilitaOpzioni() {
+            const selectElements = Array.from(document.querySelectorAll('.select-stato'));
             
-            tutteLeTendine.forEach(sel => {
-                // Salviamo lo stato al caricamento
-                statiPrecedenti[sel.id] = sel.value;
+            // Trovo le opzioni uniche attualmente occupate
+            const opzioniUsate = selectElements
+                .map(sel => sel.value)
+                .filter(valore => !statiIllimitati.includes(valore));
 
-                sel.addEventListener('change', function() {
-                    const nuovoStato = this.value;
-                    const idCorrente = this.id;
+            selectElements.forEach(select => {
+                const valoreAttualeDiQuestoSelect = select.value;
+                Array.from(select.options).forEach(option => {
+                    const optVal = option.value;
                     
-                    // Se l'utente seleziona uno stato "Unico" (es. GALLARATE 1)
-                    if (!statiIllimitati.includes(nuovoStato)) {
-                        
-                        // Controllo se un altro mezzo lo ha già impostato
-                        tutteLeTendine.forEach(altroSel => {
-                            if (altroSel.id !== idCorrente && altroSel.value === nuovoStato) {
-                                
-                                // Ruba lo slot: l'altro mezzo torna "OPERATIVO"
-                                altroSel.value = "OPERATIVO";
-                                statiPrecedenti[altroSel.id] = "OPERATIVO";
-                                
-                                alert(`🔄 SCAMBIO AUTOMATICO:\nLo stato "${nuovoStato}" è stato rimosso dall'altro mezzo ed è tornato "OPERATIVO".\n\n⚠️ Ricordati di cliccare su "Salva Assegnazione" per salvare la modifica.`);
-                            }
-                        });
+                    if (statiIllimitati.includes(optVal)) {
+                        option.disabled = false;
+                    } else {
+                        // Se l'opzione è usata altrove, non posso selezionarla
+                        if (opzioniUsate.includes(optVal) && optVal !== valoreAttualeDiQuestoSelect) {
+                            option.disabled = true;
+                        } else {
+                            option.disabled = false;
+                        }
                     }
-                    
-                    // Aggiorno lo storico
-                    statiPrecedenti[idCorrente] = nuovoStato;
                 });
             });
         }
@@ -354,7 +373,7 @@
         }
 
         /* =========================================
-           SEZIONE 2: GESTIONE SEGNALAZIONI 
+           SEZIONE 2: GESTIONE SEGNALAZIONI (Con KPI)
            ========================================= */
         function caricaDatiSegnalazioni() {
             Papa.parse(URL_CSV_SEGNALAZIONI + '&t=' + Date.now(), {
@@ -393,12 +412,42 @@
             const container = document.getElementById('listaDifetti');
             container.innerHTML = '';
             document.getElementById('titolo-sezione').innerHTML = visualizzaSoloRisolti ? '📂 Log Segnalazioni Risolte' : 'Segnalazioni Attive';
+            
+            // Mostra il contenitore dei KPI
+            document.getElementById('kpi-segnalazioni').style.display = 'flex';
+
+            let countDaValutare = 0;
+            let countInCarico = 0;
+            let countRisolti = 0;
 
             const difettiValidi = datiSegnalazioni.filter(riga => {
                 const haSigla = (riga['Sigla radio'] || riga['Sigla Radio'] || '').trim() !== '';
                 const eRisolto = Object.values(riga).some(val => typeof val === 'string' && val.trim().toLowerCase() === 'risolto');
+                const inCarico = Object.values(riga).some(val => typeof val === 'string' && val.trim().toLowerCase().includes('in carico'));
+                
+                if (haSigla) {
+                    if (eRisolto) countRisolti++;
+                    else if (inCarico) countInCarico++;
+                    else countDaValutare++;
+                }
+
                 return visualizzaSoloRisolti ? (haSigla && eRisolto) : (haSigla && !eRisolto);
             });
+
+            // Scrittura dei KPI nei riquadri
+            if (visualizzaSoloRisolti) {
+                document.getElementById('kpi-da-valutare').innerText = "-";
+                document.getElementById('kpi-in-carico').innerText = "-";
+                document.getElementById('kpi-totali').innerText = countRisolti;
+                document.getElementById('kpi-totali').className = 'kpi-valore val-verde';
+                document.getElementById('kpi-label-totali').innerText = "Risolti";
+            } else {
+                document.getElementById('kpi-da-valutare').innerText = countDaValutare;
+                document.getElementById('kpi-in-carico').innerText = countInCarico;
+                document.getElementById('kpi-totali').innerText = countDaValutare + countInCarico;
+                document.getElementById('kpi-totali').className = 'kpi-valore';
+                document.getElementById('kpi-label-totali').innerText = "Totali Attive";
+            }
 
             if (difettiValidi.length === 0) {
                 container.innerHTML = `<div class="nessun-difetto">${visualizzaSoloRisolti ? "Nessun difetto in archivio." : "Nessun difetto segnalato. Mezzi operativi! ✨"}</div>`;

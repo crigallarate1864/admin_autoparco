@@ -7,7 +7,7 @@
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
     <style>
@@ -44,20 +44,31 @@
             padding: 30px 20px 80px 20px;
         }
 
-        /* --- HEADER CONTROL TOWER --- */
+        /* --- HEADER CONTROL TOWER (Elegante) --- */
         .app-header { text-align: center; margin-bottom: 30px; }
         
         h1 {
-            color: var(--cri-red); font-size: 2.2rem; margin: 0 0 10px 0; font-weight: 900;
-            line-height: 1.2; letter-spacing: -0.5px; display: flex; align-items: center;
-            justify-content: center; gap: 12px; flex-wrap: wrap;
+            color: var(--cri-red); 
+            font-size: 2.2rem; 
+            margin: 0 0 10px 0; 
+            font-weight: 900;
+            line-height: 1.2; 
+            letter-spacing: -0.5px; 
+            display: flex; 
+            align-items: center;
+            justify-content: center; 
+            flex-wrap: wrap;
         }
 
-        .control-tower-badge {
-            font-family: 'Courier New', Courier, monospace; background-color: #0f172a;
-            color: #38bdf8; font-size: 1.1rem; padding: 6px 14px; border-radius: 8px;
-            letter-spacing: 1px; font-weight: 700; border: 1px solid #334155;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.15); text-transform: uppercase;
+        .control-tower-text {
+            font-weight: 300;
+            font-size: 1.6rem;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            border-left: 2px solid var(--cri-red);
+            padding-left: 15px;
+            margin-left: 10px;
         }
 
         .subtitle { color: var(--text-muted); font-size: 0.95rem; margin: 0; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
@@ -97,7 +108,10 @@
         .targa-badge { display: inline-block; margin-top: 8px; background: #f1f5f9; padding: 4px 8px; border-radius: 6px; font-family: 'Courier New', monospace; font-weight: bold; font-size: 0.9rem; border: 1px solid #cbd5e1; }
         .mezzo-controls { display: flex; flex-direction: column; gap: 10px; flex: 2; min-width: 250px; }
         select, input { padding: 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-family: inherit; font-size: 0.95rem; width: 100%; box-sizing: border-box; background: #ffffff; color: #1e293b; font-weight: 500; }
-        select option:disabled { color: #94a3b8; font-style: italic; }
+        
+        /* Stile opzioni disabilitate */
+        select option:disabled { color: #94a3b8; font-style: italic; background-color: #f8fafc; }
+        
         select:focus, input:focus { outline: none; border-color: var(--cri-red); box-shadow: 0 0 0 3px rgba(214, 69, 69, 0.1); }
         .btn-salva { background: linear-gradient(135deg, var(--cri-red) 0%, var(--cri-red-dark) 100%); color: white; padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: 0.95rem; transition: all 0.2s; font-family: inherit; }
 
@@ -153,7 +167,7 @@
 
     <div class="container">
         <header class="app-header">
-            <h1>ARGO <span class="control-tower-badge">Control Tower</span></h1>
+            <h1>ARGO <span class="control-tower-text">Control Tower</span></h1>
             <p class="subtitle">Regia Autoparco e Segnalazioni</p>
         </header>
 
@@ -201,6 +215,7 @@
         let datiSegnalazioni = [];
         let visualizzaSoloRisolti = false;
 
+        // Questi stati possono essere applicati a infiniti mezzi
         const statiIllimitati = [
             "OPERATIVO", "MANUTENZIONE", "IN MANUTENZIONE", "FUORI USO", "FUORI SERVIZIO"
         ];
@@ -288,27 +303,43 @@
                 container.appendChild(card);
             });
 
-            document.querySelectorAll('.select-stato').forEach(sel => sel.addEventListener('change', aggiornaDisponibilitaOpzioni));
+            // Aggiungiamo l'event listener a tutti i menu a tendina
+            const tutteLeTendine = document.querySelectorAll('.select-stato');
+            tutteLeTendine.forEach(sel => sel.addEventListener('change', aggiornaDisponibilitaOpzioni));
+            
+            // Chiamata iniziale per impostare le disabilitazioni corrette
             aggiornaDisponibilitaOpzioni();
         }
 
+        // --- LA LOGICA DELLE OPZIONI UNICHE ---
         function aggiornaDisponibilitaOpzioni() {
-            const tuttiISelect = document.querySelectorAll('.select-stato');
-            let opzioniUsate = [];
-            tuttiISelect.forEach(sel => {
-                if (!statiIllimitati.includes(sel.value)) opzioniUsate.push(sel.value);
-            });
+            const selectElements = Array.from(document.querySelectorAll('.select-stato'));
+            
+            // 1. Trovo tutte le opzioni "uniche" che sono attualmente selezionate (ignorando quelle illimitate)
+            const opzioniUsate = selectElements
+                .map(sel => sel.value)
+                .filter(valore => !statiIllimitati.includes(valore));
 
-            tuttiISelect.forEach(sel => {
-                const val = sel.value;
-                for (let i = 0; i < sel.options.length; i++) {
-                    const optVal = sel.options[i].value;
+            // 2. Passo in rassegna ogni menu a tendina per disabilitare ciò che è usato dagli altri
+            selectElements.forEach(select => {
+                const valoreAttualeDiQuestoSelect = select.value;
+                
+                Array.from(select.options).forEach(option => {
+                    const optVal = option.value;
+                    
                     if (statiIllimitati.includes(optVal)) {
-                        sel.options[i].disabled = false;
+                        // È uno stato di base, sempre permesso
+                        option.disabled = false;
                     } else {
-                        sel.options[i].disabled = (opzioniUsate.includes(optVal) && optVal !== val);
+                        // È uno stato unico. Se è nella lista di quelli usati, 
+                        // e NON è quello che sto attualmente usando IO, bloccalo.
+                        if (opzioniUsate.includes(optVal) && optVal !== valoreAttualeDiQuestoSelect) {
+                            option.disabled = true;
+                        } else {
+                            option.disabled = false;
+                        }
                     }
-                }
+                });
             });
         }
 

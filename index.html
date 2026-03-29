@@ -108,10 +108,6 @@
         .targa-badge { display: inline-block; margin-top: 8px; background: #f1f5f9; padding: 4px 8px; border-radius: 6px; font-family: 'Courier New', monospace; font-weight: bold; font-size: 0.9rem; border: 1px solid #cbd5e1; }
         .mezzo-controls { display: flex; flex-direction: column; gap: 10px; flex: 2; min-width: 250px; }
         select, input { padding: 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-family: inherit; font-size: 0.95rem; width: 100%; box-sizing: border-box; background: #ffffff; color: #1e293b; font-weight: 500; }
-        
-        /* Stile opzioni disabilitate */
-        select option:disabled { color: #94a3b8; font-style: italic; background-color: #f8fafc; }
-        
         select:focus, input:focus { outline: none; border-color: var(--cri-red); box-shadow: 0 0 0 3px rgba(214, 69, 69, 0.1); }
         .btn-salva { background: linear-gradient(135deg, var(--cri-red) 0%, var(--cri-red-dark) 100%); color: white; padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: 0.95rem; transition: all 0.2s; font-family: inherit; }
 
@@ -303,42 +299,41 @@
                 container.appendChild(card);
             });
 
-            // Aggiungiamo l'event listener a tutti i menu a tendina
-            const tutteLeTendine = document.querySelectorAll('.select-stato');
-            tutteLeTendine.forEach(sel => sel.addEventListener('change', aggiornaDisponibilitaOpzioni));
-            
-            // Chiamata iniziale per impostare le disabilitazioni corrette
-            aggiornaDisponibilitaOpzioni();
+            inizializzaLogicaScambio();
         }
 
-        // --- LA LOGICA DELLE OPZIONI UNICHE ---
-        function aggiornaDisponibilitaOpzioni() {
-            const selectElements = Array.from(document.querySelectorAll('.select-stato'));
-            
-            // 1. Trovo tutte le opzioni "uniche" che sono attualmente selezionate (ignorando quelle illimitate)
-            const opzioniUsate = selectElements
-                .map(sel => sel.value)
-                .filter(valore => !statiIllimitati.includes(valore));
+        // --- LA LOGICA "RUBA SLOT" (Auto-Scambio) ---
+        let statiPrecedenti = {};
 
-            // 2. Passo in rassegna ogni menu a tendina per disabilitare ciò che è usato dagli altri
-            selectElements.forEach(select => {
-                const valoreAttualeDiQuestoSelect = select.value;
-                
-                Array.from(select.options).forEach(option => {
-                    const optVal = option.value;
+        function inizializzaLogicaScambio() {
+            const tutteLeTendine = document.querySelectorAll('.select-stato');
+            
+            tutteLeTendine.forEach(sel => {
+                // Salviamo lo stato al caricamento
+                statiPrecedenti[sel.id] = sel.value;
+
+                sel.addEventListener('change', function() {
+                    const nuovoStato = this.value;
+                    const idCorrente = this.id;
                     
-                    if (statiIllimitati.includes(optVal)) {
-                        // È uno stato di base, sempre permesso
-                        option.disabled = false;
-                    } else {
-                        // È uno stato unico. Se è nella lista di quelli usati, 
-                        // e NON è quello che sto attualmente usando IO, bloccalo.
-                        if (opzioniUsate.includes(optVal) && optVal !== valoreAttualeDiQuestoSelect) {
-                            option.disabled = true;
-                        } else {
-                            option.disabled = false;
-                        }
+                    // Se l'utente seleziona uno stato "Unico" (es. GALLARATE 1)
+                    if (!statiIllimitati.includes(nuovoStato)) {
+                        
+                        // Controllo se un altro mezzo lo ha già impostato
+                        tutteLeTendine.forEach(altroSel => {
+                            if (altroSel.id !== idCorrente && altroSel.value === nuovoStato) {
+                                
+                                // Ruba lo slot: l'altro mezzo torna "OPERATIVO"
+                                altroSel.value = "OPERATIVO";
+                                statiPrecedenti[altroSel.id] = "OPERATIVO";
+                                
+                                alert(`🔄 SCAMBIO AUTOMATICO:\nLo stato "${nuovoStato}" è stato rimosso dall'altro mezzo ed è tornato "OPERATIVO".\n\n⚠️ Ricordati di cliccare su "Salva Assegnazione" per salvare la modifica.`);
+                            }
+                        });
                     }
+                    
+                    // Aggiorno lo storico
+                    statiPrecedenti[idCorrente] = nuovoStato;
                 });
             });
         }

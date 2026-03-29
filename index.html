@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, viewport-fit=cover">
-    <title>ARGO - Regia Autoparco</title>
+    <title>ARGO | Control Tower</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -218,7 +218,7 @@
 
     <div class="container">
         <header class="app-header">
-            <h1>ARGO Regia</h1>
+            <h1>ARGO | Control Tower</h1>
             <p class="subtitle">Gestione Operatività Autoparco</p>
         </header>
 
@@ -238,7 +238,6 @@
     <script>
         const PIN_SEGRETO = "V3icoli-"; 
         
-        // I tuoi URL aggiornati
         const URL_CSV_HUB = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRMtO9pbvrr-yz1xMwquFeonWlhrwz6R_01HXu0swxX6tqrNok0Xjr6KRfIdYRnnGx8ZvjIoN_9vMQi/pub?output=csv'; 
         const URL_API_APPSCRIPT = 'https://script.google.com/macros/s/AKfycbxz8Y21Wzg2_LtdMUhVJO0oiVR1Y6NCS6i0I_atPJskpMdC21I60sPyfDvp1kKyihqSBA/exec'; 
 
@@ -256,15 +255,23 @@
             }
         });
 
-        // Lettura dati dal CSV pubblico
+        // Lettura dati dal CSV pubblico (usando gli indici geometrici delle colonne)
         function caricaDatiCSV() {
             Papa.parse(URL_CSV_HUB + '&t=' + Date.now(), {
                 download: true,
-                header: true,
+                header: false, 
                 complete: function(results) {
-                    // Filtriamo le righe vuote
-                    datiMezzi = results.data.filter(r => r['Sigla Radio'] && r['Sigla Radio'].trim() !== '');
-                    renderizzaMezzi();
+                    // Rimuoviamo la riga 0 (titoli delle colonne)
+                    let righe = results.data.slice(1);
+                    
+                    // Filtriamo le righe valide (che hanno la sigla nella colonna B, cioè indice 1)
+                    datiMezzi = righe.filter(r => r[1] && r[1].trim() !== '');
+                    
+                    if (datiMezzi.length === 0) {
+                        document.getElementById('lista-mezzi').innerHTML = '<div style="text-align: center; color: #64748b;">Nessun mezzo trovato. Verifica il file Google Sheets.</div>';
+                    } else {
+                        renderizzaMezzi();
+                    }
                 },
                 error: function(err) {
                     alert("Errore nel caricamento del database mezzi.");
@@ -277,7 +284,6 @@
             const container = document.getElementById('lista-mezzi');
             container.innerHTML = '';
 
-            // Le opzioni esatte che la tua Dashboard si aspetta di leggere
             const opzioniStato = [
                 "OPERATIVO",
                 "GALLARATE CONV 1",
@@ -292,15 +298,16 @@
             ];
 
             datiMezzi.forEach(mezzo => {
-                const sigla = mezzo['Sigla Radio'];
-                const modello = mezzo['Modello'] || 'N/D';
-                const targa = mezzo['Targa'] || 'N/D';
-                const statoAttuale = mezzo['Stato'] ? mezzo['Stato'].toUpperCase() : 'OPERATIVO';
-                const noteAttuali = mezzo['Note'] || '';
+                // Lettura da indici: 1=Sigla, 2=Modello, 3=Targa, 4=Stato, 5=Note
+                const sigla = mezzo[1] ? mezzo[1].trim() : 'Sconosciuto';
+                const modello = mezzo[2] ? mezzo[2].trim() : 'N/D';
+                const targa = mezzo[3] ? mezzo[3].trim() : 'N/D';
+                const statoAttuale = mezzo[4] ? mezzo[4].trim().toUpperCase() : 'OPERATIVO';
+                const noteAttuali = mezzo[5] ? mezzo[5].trim() : '';
 
-                // Creazione menu a tendina dinamico
+                // Creazione menu a tendina
                 let opzioniHtml = opzioniStato.map(opt => 
-                    `<option value="${opt}" ${statoAttuale === opt ? 'selected' : ''}>${opt}</option>`
+                    `<option value="${opt}" ${statoAttuale.includes(opt) ? 'selected' : ''}>${opt}</option>`
                 ).join('');
 
                 const card = document.createElement('div');
@@ -321,7 +328,7 @@
             });
         }
 
-        // Invio dati a Google Apps Script
+        // Invio dati a Google Apps Script per l'aggiornamento
         async function salvaMezzo(sigla) {
             const nuovoStato = document.getElementById(`stato-${sigla}`).value;
             const nuoveNote = document.getElementById(`note-${sigla}`).value;
@@ -334,17 +341,15 @@
             formData.append('note', nuoveNote);
 
             try {
-                // Chiamata POST verso il tuo Google Apps Script
                 await fetch(URL_API_APPSCRIPT, {
                     method: 'POST',
                     body: formData,
-                    mode: 'no-cors' // Impedisce i blocchi di sicurezza tra GitHub e Google
+                    mode: 'no-cors' 
                 });
 
-                // Diamo il tempo allo script di scrivere sul file
                 setTimeout(() => {
                     document.getElementById('loading').style.display = 'none';
-                    alert(`✅ ${sigla} aggiornato!\n\nI monitor dell'HUB si aggiorneranno automaticamente in pochi secondi.`);
+                    alert(`✅ ${sigla} aggiornato!\n\nI monitor dell'HUB si aggiorneranno automaticamente.`);
                 }, 1500);
 
             } catch (error) {

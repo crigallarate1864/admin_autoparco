@@ -49,13 +49,34 @@
             margin-bottom: 30px; 
         }
 
+        /* MODIFICA: Stile differenziato per il titolo */
         h1 {
             color: var(--cri-red);
             font-size: 2.2rem; 
-            margin: 0 0 5px 0; 
-            font-weight: 800;
+            margin: 0 0 10px 0; 
+            font-weight: 900;
             line-height: 1.2;
-            letter-spacing: -0.5px; 
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        /* Il nuovo badge tecnico per Control Tower */
+        .control-tower-badge {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #0f172a;
+            color: #38bdf8;
+            font-size: 1.1rem;
+            padding: 6px 14px;
+            border-radius: 8px;
+            letter-spacing: 1px;
+            font-weight: 700;
+            border: 1px solid #334155;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            text-transform: uppercase;
         }
 
         .subtitle {
@@ -162,6 +183,12 @@
             font-weight: 500;
         }
 
+        /* Stile per le opzioni disabilitate nella tendina */
+        select option:disabled {
+            color: #94a3b8;
+            font-style: italic;
+        }
+
         select:focus, input:focus {
             outline: none;
             border-color: var(--cri-red);
@@ -218,7 +245,7 @@
 
     <div class="container">
         <header class="app-header">
-            <h1>ARGO | Control Tower</h1>
+            <h1>ARGO <span class="control-tower-badge">Control Tower</span></h1>
             <p class="subtitle">Gestione Operatività Autoparco</p>
         </header>
 
@@ -243,6 +270,15 @@
 
         let datiMezzi = [];
 
+        // Array degli stati che possono essere usati all'infinito da più mezzi
+        const statiIllimitati = [
+            "OPERATIVO",
+            "MANUTENZIONE",
+            "IN MANUTENZIONE",
+            "FUORI USO",
+            "FUORI SERVIZIO"
+        ];
+
         // Gestione Login
         document.getElementById('btn-login').addEventListener('click', () => {
             const pin = prompt("🔒 Inserisci il PIN per sbloccare la regia:");
@@ -255,16 +291,13 @@
             }
         });
 
-        // Lettura dati dal CSV pubblico (usando gli indici geometrici delle colonne)
+        // Lettura dati dal CSV pubblico
         function caricaDatiCSV() {
             Papa.parse(URL_CSV_HUB + '&t=' + Date.now(), {
                 download: true,
                 header: false, 
                 complete: function(results) {
-                    // Rimuoviamo la riga 0 (titoli delle colonne)
                     let righe = results.data.slice(1);
-                    
-                    // Filtriamo le righe valide (che hanno la sigla nella colonna B, cioè indice 1)
                     datiMezzi = righe.filter(r => r[1] && r[1].trim() !== '');
                     
                     if (datiMezzi.length === 0) {
@@ -279,7 +312,7 @@
             });
         }
 
-        // Creazione dell'interfaccia per ogni mezzo
+        // Creazione dell'interfaccia
         function renderizzaMezzi() {
             const container = document.getElementById('lista-mezzi');
             container.innerHTML = '';
@@ -294,18 +327,18 @@
                 "BACKUP CONV SOMMA L.DO",
                 "AGG. MXP",
                 "MANUTENZIONE",
-                "FUORI SERVIZIO"
+                "IN MANUTENZIONE",
+                "FUORI SERVIZIO",
+                "FUORI USO"
             ];
 
             datiMezzi.forEach(mezzo => {
-                // Lettura da indici: 1=Sigla, 2=Modello, 3=Targa, 4=Stato, 5=Note
                 const sigla = mezzo[1] ? mezzo[1].trim() : 'Sconosciuto';
                 const modello = mezzo[2] ? mezzo[2].trim() : 'N/D';
                 const targa = mezzo[3] ? mezzo[3].trim() : 'N/D';
                 const statoAttuale = mezzo[4] ? mezzo[4].trim().toUpperCase() : 'OPERATIVO';
                 const noteAttuali = mezzo[5] ? mezzo[5].trim() : '';
 
-                // Creazione menu a tendina
                 let opzioniHtml = opzioniStato.map(opt => 
                     `<option value="${opt}" ${statoAttuale.includes(opt) ? 'selected' : ''}>${opt}</option>`
                 ).join('');
@@ -319,12 +352,59 @@
                         <div class="targa-badge">${targa}</div>
                     </div>
                     <div class="mezzo-controls">
-                        <select id="stato-${sigla}">${opzioniHtml}</select>
+                        <select id="stato-${sigla}" class="select-stato">${opzioniHtml}</select>
                         <input type="text" id="note-${sigla}" value="${noteAttuali}" placeholder="Note (es. In officina da Mario)...">
                         <button class="btn-salva" onclick="salvaMezzo('${sigla}')">💾 Salva Aggiornamento</button>
                     </div>
                 `;
                 container.appendChild(card);
+            });
+
+            // LOGICA DI CONTROLLO UNICITA': 
+            // Aggiungo un "ascoltatore" ad ogni tendina. Quando una cambia, ricalcolo le disponibilità.
+            const tuttiISelect = document.querySelectorAll('.select-stato');
+            tuttiISelect.forEach(sel => {
+                sel.addEventListener('change', aggiornaDisponibilitaOpzioni);
+            });
+
+            // Eseguo la funzione la prima volta per disabilitare subito le voci già assegnate
+            aggiornaDisponibilitaOpzioni();
+        }
+
+        // Funzione per disabilitare le opzioni a "uso singolo" se già usate
+        function aggiornaDisponibilitaOpzioni() {
+            const tuttiISelect = document.querySelectorAll('.select-stato');
+            
+            // 1. Capisco quali opzioni "uniche" sono attualmente selezionate in generale
+            let opzioniUsate = [];
+            tuttiISelect.forEach(sel => {
+                const valore = sel.value;
+                if (!statiIllimitati.includes(valore)) {
+                    opzioniUsate.push(valore);
+                }
+            });
+
+            // 2. Passo in rassegna ogni tendina e blocco le opzioni usate dagli altri
+            tuttiISelect.forEach(sel => {
+                const valoreDiQuestoSelect = sel.value;
+                const opzioni = sel.options;
+
+                for (let i = 0; i < opzioni.length; i++) {
+                    const optVal = opzioni[i].value;
+
+                    if (statiIllimitati.includes(optVal)) {
+                        // Gli stati operativi/manutenzione sono sempre attivi
+                        opzioni[i].disabled = false;
+                    } else {
+                        // Se l'opzione è tra quelle usate in generale, MA non è quella attualmente
+                        // scelta da questo specifico mezzo, allora la blocco.
+                        if (opzioniUsate.includes(optVal) && optVal !== valoreDiQuestoSelect) {
+                            opzioni[i].disabled = true;
+                        } else {
+                            opzioni[i].disabled = false;
+                        }
+                    }
+                }
             });
         }
 

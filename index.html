@@ -108,14 +108,21 @@
         .targa-badge { display: inline-block; margin-top: 8px; background: #f1f5f9; padding: 4px 8px; border-radius: 6px; font-family: 'Courier New', monospace; font-weight: bold; font-size: 0.9rem; border: 1px solid #cbd5e1; }
         .mezzo-controls { display: flex; flex-direction: column; gap: 10px; flex: 2; min-width: 250px; }
         select, input { padding: 12px; border-radius: 10px; border: 1px solid #cbd5e1; font-family: inherit; font-size: 0.95rem; width: 100%; box-sizing: border-box; background: #ffffff; color: #1e293b; font-weight: 500; }
-        
         select option:disabled { color: #94a3b8; font-style: italic; background-color: #f8fafc; }
         select:focus, input:focus { outline: none; border-color: var(--cri-red); box-shadow: 0 0 0 3px rgba(214, 69, 69, 0.1); }
         .btn-salva { background: linear-gradient(135deg, var(--cri-red) 0%, var(--cri-red-dark) 100%); color: white; padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: 0.95rem; transition: all 0.2s; font-family: inherit; }
 
         /* --- CSS SEGNALAZIONI E KPI --- */
         .kpi-container { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
-        .kpi-card { flex: 1; min-width: 100px; background: #ffffff; border-radius: 16px; padding: 15px 10px; text-align: center; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 4px 12px rgba(0,0,0,0.02); }
+        
+        /* MODIFICA: Aggiunto cursor pointer e transition per cliccare i KPI */
+        .kpi-card { 
+            flex: 1; min-width: 100px; background: #ffffff; border-radius: 16px; 
+            padding: 15px 10px; text-align: center; border: 2px solid transparent; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05); cursor: pointer; transition: all 0.2s ease; 
+        }
+        .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 6px 15px rgba(0,0,0,0.08); }
+        
         .kpi-valore { font-size: 2.2rem; font-weight: 900; line-height: 1; margin-bottom: 6px; color: #1e293b; }
         .kpi-label { font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
         .val-rosso { color: var(--cri-red); }
@@ -198,15 +205,15 @@
                 <button id="btn-toggle-risolti" class="btn-admin-action">📂 Visualizza Log Risolti</button>
                 
                 <div class="kpi-container" id="kpi-segnalazioni" style="display: none;">
-                    <div class="kpi-card">
+                    <div class="kpi-card" id="kpi-card-da-valutare" onclick="impostaFiltroSegnalazioni('da-valutare')">
                         <div class="kpi-valore val-rosso" id="kpi-da-valutare">0</div>
                         <div class="kpi-label">Da Valutare</div>
                     </div>
-                    <div class="kpi-card">
+                    <div class="kpi-card" id="kpi-card-in-carico" onclick="impostaFiltroSegnalazioni('in-carico')">
                         <div class="kpi-valore val-giallo" id="kpi-in-carico">0</div>
                         <div class="kpi-label">In Carico</div>
                     </div>
-                    <div class="kpi-card">
+                    <div class="kpi-card" id="kpi-card-totali" onclick="impostaFiltroSegnalazioni('tutte')" style="border: 2px solid #1e293b;">
                         <div class="kpi-valore" id="kpi-totali">0</div>
                         <div class="kpi-label" id="kpi-label-totali">Totali Attive</div>
                     </div>
@@ -236,6 +243,7 @@
         let datiMezzi = [];
         let datiSegnalazioni = [];
         let visualizzaSoloRisolti = false;
+        let filtroSegnalazioniCorrente = 'tutte'; // Stato del filtro KPI
 
         // Questi stati possono essere applicati a infiniti mezzi
         const statiIllimitati = [
@@ -287,6 +295,8 @@
             });
         }
 
+        let statiPrecedenti = {};
+
         function renderizzaMezzi() {
             const container = document.getElementById('lista-mezzi');
             container.innerHTML = '';
@@ -323,36 +333,30 @@
                 container.appendChild(card);
             });
 
-            // Aggiungiamo l'event listener per la logica di ruba/slot
-            const tutteLeTendine = document.querySelectorAll('.select-stato');
-            tutteLeTendine.forEach(sel => sel.addEventListener('change', aggiornaDisponibilitaOpzioni));
-            
-            aggiornaDisponibilitaOpzioni();
+            inizializzaLogicaScambio();
         }
 
-        function aggiornaDisponibilitaOpzioni() {
-            const selectElements = Array.from(document.querySelectorAll('.select-stato'));
+        // --- LA LOGICA "RUBA SLOT" ---
+        function inizializzaLogicaScambio() {
+            const tutteLeTendine = document.querySelectorAll('.select-stato');
             
-            // Trovo le opzioni uniche attualmente occupate
-            const opzioniUsate = selectElements
-                .map(sel => sel.value)
-                .filter(valore => !statiIllimitati.includes(valore));
+            tutteLeTendine.forEach(sel => {
+                statiPrecedenti[sel.id] = sel.value;
 
-            selectElements.forEach(select => {
-                const valoreAttualeDiQuestoSelect = select.value;
-                Array.from(select.options).forEach(option => {
-                    const optVal = option.value;
+                sel.addEventListener('change', function() {
+                    const nuovoStato = this.value;
+                    const idCorrente = this.id;
                     
-                    if (statiIllimitati.includes(optVal)) {
-                        option.disabled = false;
-                    } else {
-                        // Se l'opzione è usata altrove, non posso selezionarla
-                        if (opzioniUsate.includes(optVal) && optVal !== valoreAttualeDiQuestoSelect) {
-                            option.disabled = true;
-                        } else {
-                            option.disabled = false;
-                        }
+                    if (!statiIllimitati.includes(nuovoStato)) {
+                        tutteLeTendine.forEach(altroSel => {
+                            if (altroSel.id !== idCorrente && altroSel.value === nuovoStato) {
+                                altroSel.value = "OPERATIVO";
+                                statiPrecedenti[altroSel.id] = "OPERATIVO";
+                                alert(`🔄 SCAMBIO AUTOMATICO:\nLo stato "${nuovoStato}" è stato rimosso dall'altro mezzo ed è tornato "OPERATIVO".\n\n⚠️ Ricordati di cliccare su "Salva Assegnazione" per salvare la modifica.`);
+                            }
+                        });
                     }
+                    statiPrecedenti[idCorrente] = nuovoStato;
                 });
             });
         }
@@ -373,8 +377,28 @@
         }
 
         /* =========================================
-           SEZIONE 2: GESTIONE SEGNALAZIONI (Con KPI)
+           SEZIONE 2: GESTIONE SEGNALAZIONI 
            ========================================= */
+
+        // Funzione per impostare il filtro e aggiornare i bordi KPI
+        function impostaFiltroSegnalazioni(filtro) {
+            if (visualizzaSoloRisolti) return; // Disabilitato se siamo nei log risolti
+            
+            filtroSegnalazioniCorrente = filtro;
+            
+            // Reset Bordi
+            document.getElementById('kpi-card-da-valutare').style.border = '2px solid transparent';
+            document.getElementById('kpi-card-in-carico').style.border = '2px solid transparent';
+            document.getElementById('kpi-card-totali').style.border = '2px solid transparent';
+            
+            // Applica il bordo a quello selezionato
+            if (filtro === 'da-valutare') document.getElementById('kpi-card-da-valutare').style.border = '2px solid var(--cri-red)';
+            if (filtro === 'in-carico') document.getElementById('kpi-card-in-carico').style.border = '2px solid #d97700';
+            if (filtro === 'tutte') document.getElementById('kpi-card-totali').style.border = '2px solid #1e293b';
+
+            renderizzaSegnalazioni(); // Ridisegna la lista applicando il filtro
+        }
+
         function caricaDatiSegnalazioni() {
             Papa.parse(URL_CSV_SEGNALAZIONI + '&t=' + Date.now(), {
                 download: true, header: true,
@@ -388,12 +412,16 @@
         document.getElementById('btn-toggle-risolti').addEventListener('click', () => {
             visualizzaSoloRisolti = !visualizzaSoloRisolti;
             const btn = document.getElementById('btn-toggle-risolti');
+            
             if (visualizzaSoloRisolti) {
                 btn.innerHTML = '🔙 Torna alle Segnalazioni Attive';
                 btn.style.backgroundColor = '#d64545';
+                document.getElementById('titolo-sezione').innerHTML = '📂 Log Segnalazioni Risolte';
             } else {
                 btn.innerHTML = '📂 Visualizza Log Risolti';
                 btn.style.backgroundColor = '#1e293b';
+                document.getElementById('titolo-sezione').innerHTML = 'Segnalazioni Attive';
+                impostaFiltroSegnalazioni('tutte'); // Resetta il filtro quando torna alle attive
             }
             renderizzaSegnalazioni();
         });
@@ -411,16 +439,15 @@
         function renderizzaSegnalazioni() {
             const container = document.getElementById('listaDifetti');
             container.innerHTML = '';
-            document.getElementById('titolo-sezione').innerHTML = visualizzaSoloRisolti ? '📂 Log Segnalazioni Risolte' : 'Segnalazioni Attive';
             
-            // Mostra il contenitore dei KPI
             document.getElementById('kpi-segnalazioni').style.display = 'flex';
 
+            // 1. Calcolo Numeri Totali per i KPI (su TUTTI i difetti attivi)
             let countDaValutare = 0;
             let countInCarico = 0;
             let countRisolti = 0;
 
-            const difettiValidi = datiSegnalazioni.filter(riga => {
+            const difettiBase = datiSegnalazioni.filter(riga => {
                 const haSigla = (riga['Sigla radio'] || riga['Sigla Radio'] || '').trim() !== '';
                 const eRisolto = Object.values(riga).some(val => typeof val === 'string' && val.trim().toLowerCase() === 'risolto');
                 const inCarico = Object.values(riga).some(val => typeof val === 'string' && val.trim().toLowerCase().includes('in carico'));
@@ -434,7 +461,7 @@
                 return visualizzaSoloRisolti ? (haSigla && eRisolto) : (haSigla && !eRisolto);
             });
 
-            // Scrittura dei KPI nei riquadri
+            // 2. Aggiornamento KPI Grafici
             if (visualizzaSoloRisolti) {
                 document.getElementById('kpi-da-valutare').innerText = "-";
                 document.getElementById('kpi-in-carico').innerText = "-";
@@ -449,13 +476,24 @@
                 document.getElementById('kpi-label-totali').innerText = "Totali Attive";
             }
 
-            if (difettiValidi.length === 0) {
-                container.innerHTML = `<div class="nessun-difetto">${visualizzaSoloRisolti ? "Nessun difetto in archivio." : "Nessun difetto segnalato. Mezzi operativi! ✨"}</div>`;
+            // 3. Applicazione del Filtro alla Lista visiva
+            let difettiDaMostrare = difettiBase;
+            if (!visualizzaSoloRisolti && filtroSegnalazioniCorrente !== 'tutte') {
+                difettiDaMostrare = difettiBase.filter(riga => {
+                    const inCarico = Object.values(riga).some(val => typeof val === 'string' && val.trim().toLowerCase().includes('in carico'));
+                    if (filtroSegnalazioniCorrente === 'da-valutare') return !inCarico;
+                    if (filtroSegnalazioniCorrente === 'in-carico') return inCarico;
+                    return true;
+                });
+            }
+
+            if (difettiDaMostrare.length === 0) {
+                container.innerHTML = `<div class="nessun-difetto">${visualizzaSoloRisolti ? "Nessun difetto in archivio." : "Nessuna segnalazione corrispondente al filtro."}</div>`;
                 return;
             }
 
             const raggruppati = {};
-            difettiValidi.reverse().forEach(d => {
+            difettiDaMostrare.reverse().forEach(d => {
                 const sigla = (d['Sigla radio'] || d['Sigla Radio'] || '').trim().substring(0, 7);
                 if (!raggruppati[sigla]) raggruppati[sigla] = [];
                 raggruppati[sigla].push(d);

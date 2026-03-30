@@ -186,17 +186,20 @@
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(5px); z-index: 10000;
             justify-content: center; align-items: center; padding: 20px;
+            cursor: pointer; /* Indica che si può cliccare lo sfondo per uscire */
         }
         .changelog-content {
             background: #ffffff; border-radius: 16px; padding: 25px; max-width: 500px; width: 100%;
             max-height: 80vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.2); position: relative;
+            cursor: default; /* Il testo dentro non ha il cursore "cliccabile" */
         }
         .changelog-header {
             display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 15px;
         }
         .changelog-header h2 { margin: 0; color: var(--cri-red); font-size: 1.4rem; font-weight: 800; }
         .btn-close-modal {
-            background: #e2e8f0; color: #475569; border: none; border-radius: 50%; width: 30px; height: 30px;
+            background: #e2e8f0; color: #475569; border: none; border-radius: 50%; 
+            width: 36px; height: 36px; font-size: 1.2rem; /* Pulsante X ingrandito */
             font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s;
         }
         .btn-close-modal:hover { background: #cbd5e1; }
@@ -233,28 +236,20 @@
         <div id="loading-text">Sincronizzazione in corso...</div>
     </div>
 
-    <div id="changelog-modal">
+    <div id="changelog-modal" onclick="if(event.target === this) chiudiChangelog()">
         <div class="changelog-content">
             <div class="changelog-header">
                 <h2>Storico Release</h2>
-                <button class="btn-close-modal" onclick="chiudiChangelog()">✕</button>
+                <button type="button" class="btn-close-modal" onclick="chiudiChangelog()">✕</button>
             </div>
             
             <div class="release-item">
                 <span class="release-version">Rel. 1.0.2</span><span class="release-date">Attuale</span>
                 <ul class="release-notes">
+                    <li>Ottimizzata modale Changelog (ora cliccabile sullo sfondo e X maggiorata).</li>
                     <li>Rinnovamento grafico titolo in stile Control Tower.</li>
                     <li>Aggiunta logica "Auto-Scambio" intelligente tra mezzi in caso di slot duplicati.</li>
                     <li>Dashboard KPI segnalazioni resa cliccabile e reattiva per il filtraggio rapido.</li>
-                    <li>Reinserimento stato "FUORI SERVIZIO" come opzione illimitata.</li>
-                    <li>Aggiunta modale per consultazione Changelog.</li>
-                </ul>
-            </div>
-
-            <div class="release-item">
-                <span class="release-version">Rel. 1.0.1</span>
-                <ul class="release-notes">
-                    <li>Integrazione della gestione Segnalazioni all'interno della Regia Autoparco tramite visualizzazione a Tabs.</li>
                     <li>Ottimizzazione backend Google Apps Script.</li>
                 </ul>
             </div>
@@ -340,9 +335,13 @@
             "OPERATIVO", "IN MANUTENZIONE", "FUORI SERVIZIO"
         ];
 
-        // FUNZIONI CHANGELOG
-        function apriChangelog() { document.getElementById('changelog-modal').style.display = 'flex'; }
-        function chiudiChangelog() { document.getElementById('changelog-modal').style.display = 'none'; }
+        // FUNZIONI CHANGELOG (Rese esplicite e collegate alla finestra)
+        window.apriChangelog = function() { 
+            document.getElementById('changelog-modal').style.display = 'flex'; 
+        };
+        window.chiudiChangelog = function() { 
+            document.getElementById('changelog-modal').style.display = 'none'; 
+        };
 
         function switchTab(tabId, btnElement) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));

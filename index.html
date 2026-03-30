@@ -75,6 +75,19 @@
 
         .subtitle { color: var(--text-muted); font-size: 0.95rem; margin: 0; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
 
+        /* MODIFICA: Versione cliccabile */
+        .version-label {
+            font-size: 0.75rem; 
+            color: #94a3b8; 
+            margin-top: 8px; 
+            font-weight: 600; 
+            letter-spacing: 1px;
+            cursor: pointer;
+            display: inline-block;
+            transition: color 0.2s;
+        }
+        .version-label:hover { color: var(--cri-red); }
+
         /* --- LOGIN --- */
         .login-box { text-align: center; margin-top: 50px; }
         .btn-pin {
@@ -169,6 +182,31 @@
         .spinner { font-size: 2.5rem; margin-bottom: 15px; animation: spin 2s linear infinite; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
+        /* --- MODAL CHANGELOG --- */
+        #changelog-modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(5px); z-index: 10000;
+            justify-content: center; align-items: center; padding: 20px;
+        }
+        .changelog-content {
+            background: #ffffff; border-radius: 16px; padding: 25px; max-width: 500px; width: 100%;
+            max-height: 80vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.2); position: relative;
+        }
+        .changelog-header {
+            display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 15px;
+        }
+        .changelog-header h2 { margin: 0; color: var(--cri-red); font-size: 1.4rem; font-weight: 800; }
+        .btn-close-modal {
+            background: #e2e8f0; color: #475569; border: none; border-radius: 50%; width: 30px; height: 30px;
+            font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s;
+        }
+        .btn-close-modal:hover { background: #cbd5e1; }
+        .release-item { margin-bottom: 15px; }
+        .release-version { font-weight: 800; color: #1e293b; font-size: 1rem; }
+        .release-date { font-size: 0.75rem; color: #94a3b8; margin-left: 8px; font-weight: 600;}
+        .release-notes { margin: 5px 0 0 0; font-size: 0.85rem; color: #475569; line-height: 1.5; padding-left: 15px; border-left: 2px solid #cbd5e1; list-style-type: disc; }
+        .release-notes li { margin-bottom: 4px; }
+
         /* ==========================================================
            REGOLE MOBILE (SMARTPHONE)
            ========================================================== */
@@ -196,11 +234,52 @@
         <div id="loading-text">Sincronizzazione in corso...</div>
     </div>
 
+    <div id="changelog-modal">
+        <div class="changelog-content">
+            <div class="changelog-header">
+                <h2>Storico Release</h2>
+                <button class="btn-close-modal" onclick="chiudiChangelog()">✕</button>
+            </div>
+            
+            <div class="release-item">
+                <span class="release-version">Rel. 1.0.3</span><span class="release-date">Attuale</span>
+                <ul class="release-notes">
+                    <li>Reinserimento stato "FUORI SERVIZIO" come opzione illimitata.</li>
+                    <li>Aggiunta modale discreta per consultazione Changelog.</li>
+                </ul>
+            </div>
+
+            <div class="release-item">
+                <span class="release-version">Rel. 1.0.2</span>
+                <ul class="release-notes">
+                    <li>Rinnovamento grafico titolo in stile Control Tower.</li>
+                    <li>Aggiunta logica "Auto-Scambio" intelligente tra mezzi in caso di slot duplicati.</li>
+                    <li>Dashboard KPI segnalazioni resa cliccabile e reattiva per il filtraggio rapido.</li>
+                </ul>
+            </div>
+
+            <div class="release-item">
+                <span class="release-version">Rel. 1.0.1</span>
+                <ul class="release-notes">
+                    <li>Integrazione della gestione Segnalazioni all'interno della Regia Autoparco tramite visualizzazione a Tabs.</li>
+                    <li>Ottimizzazione backend Google Apps Script.</li>
+                </ul>
+            </div>
+
+            <div class="release-item">
+                <span class="release-version">Rel. 1.0.0</span>
+                <ul class="release-notes">
+                    <li>Lancio iniziale del sistema ARGO.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
     <div class="container">
         <header class="app-header">
             <h1>ARGO <span class="control-tower-text">Control Tower</span></h1>
             <p class="subtitle">Regia Autoparco e Segnalazioni</p>
-            <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 8px; font-weight: 600; letter-spacing: 1px;">Rel. 1.0.1</p>
+            <p class="version-label" onclick="apriChangelog()">Rel. 1.0.3</p>
         </header>
 
         <div class="login-box" id="login-section">
@@ -264,9 +343,14 @@
         let visualizzaSoloRisolti = false;
         let filtroSegnalazioniCorrente = 'tutte'; 
 
+        // MODIFICA: Reinserito "FUORI SERVIZIO" come stato illimitato
         const statiIllimitati = [
             "OPERATIVO", "IN MANUTENZIONE", "FUORI SERVIZIO"
         ];
+
+        // FUNZIONI CHANGELOG
+        function apriChangelog() { document.getElementById('changelog-modal').style.display = 'flex'; }
+        function chiudiChangelog() { document.getElementById('changelog-modal').style.display = 'none'; }
 
         function switchTab(tabId, btnElement) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
@@ -319,7 +403,8 @@
 
             const opzioniStato = [
                 "OPERATIVO", "GALLARATE CONV 1", "GALLARATE CONV 2", "SOMMA LOMBARDO",
-                "BACKUP CONV 1", "BACKUP CONV 2", "BACKUP CONV SOMMA L.DO", "IN MANUTENZIONE", "FUORI SERVIZIO"
+                "BACKUP CONV 1", "BACKUP CONV 2", "BACKUP CONV SOMMA L.DO", "AGG. MXP",
+                "IN MANUTENZIONE", "FUORI SERVIZIO"
             ];
 
             datiMezzi.forEach(mezzo => {
@@ -351,7 +436,6 @@
             inizializzaLogicaScambio();
         }
 
-        // --- LA LOGICA "RUBA SLOT" ---
         function inizializzaLogicaScambio() {
             const tutteLeTendine = document.querySelectorAll('.select-stato');
             

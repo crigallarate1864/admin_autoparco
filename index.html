@@ -75,7 +75,6 @@
 
         .subtitle { color: var(--text-muted); font-size: 0.95rem; margin: 0; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
 
-        /* MODIFICA: Versione cliccabile */
         .version-label {
             font-size: 0.75rem; 
             color: #94a3b8; 
@@ -242,19 +241,13 @@
             </div>
             
             <div class="release-item">
-                <span class="release-version">Rel. 1.0.3</span><span class="release-date">Attuale</span>
-                <ul class="release-notes">
-                    <li>Reinserimento stato "FUORI SERVIZIO" come opzione illimitata.</li>
-                    <li>Aggiunta modale discreta per consultazione Changelog.</li>
-                </ul>
-            </div>
-
-            <div class="release-item">
-                <span class="release-version">Rel. 1.0.2</span>
+                <span class="release-version">Rel. 1.0.2</span><span class="release-date">Attuale</span>
                 <ul class="release-notes">
                     <li>Rinnovamento grafico titolo in stile Control Tower.</li>
                     <li>Aggiunta logica "Auto-Scambio" intelligente tra mezzi in caso di slot duplicati.</li>
                     <li>Dashboard KPI segnalazioni resa cliccabile e reattiva per il filtraggio rapido.</li>
+                    <li>Reinserimento stato "FUORI SERVIZIO" come opzione illimitata.</li>
+                    <li>Aggiunta modale per consultazione Changelog.</li>
                 </ul>
             </div>
 
@@ -279,7 +272,7 @@
         <header class="app-header">
             <h1>ARGO <span class="control-tower-text">Control Tower</span></h1>
             <p class="subtitle">Regia Autoparco e Segnalazioni</p>
-            <p class="version-label" onclick="apriChangelog()">Rel. 1.0.3</p>
+            <p class="version-label" onclick="apriChangelog()">Rel. 1.0.2</p>
         </header>
 
         <div class="login-box" id="login-section">
@@ -343,7 +336,6 @@
         let visualizzaSoloRisolti = false;
         let filtroSegnalazioniCorrente = 'tutte'; 
 
-        // MODIFICA: Reinserito "FUORI SERVIZIO" come stato illimitato
         const statiIllimitati = [
             "OPERATIVO", "IN MANUTENZIONE", "FUORI SERVIZIO"
         ];

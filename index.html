@@ -244,29 +244,16 @@
             </div>
             
             <div class="release-item">
-                <span class="release-version">Rel. 1.0.4</span><span class="release-date">Attuale</span>
+                <span class="release-version">Rel. 1.0.2</span><span class="release-date">Attuale</span>
                 <ul class="release-notes">
-                    <li>Rimozione campo "Note" per allineamento con la nuova struttura del database (aggiunta Meccanici/Allestimento).</li>
-                </ul>
-            </div>
-
-            <div class="release-item">
-                <span class="release-version">Rel. 1.0.3</span>
-                <ul class="release-notes">
-                    <li>Aggiunto tab "Riferimenti Tecnici" per consultare i meccanici e allestitori assegnati a ciascun mezzo.</li>
-                    <li>Lettura colonne dinamica per supporto ai nuovi campi CSV.</li>
-                </ul>
-            </div>
-
-            <div class="release-item">
-                <span class="release-version">Rel. 1.0.2</span>
-                <ul class="release-notes">
-                    <li>Aggiunta visibilità operatore che ha effettuato la segnalazione guasti.</li>
-                    <li>Ottimizzata modale Changelog.</li>
+                    <li>Aggiornato URL API principale per la gestione flotta.</li>
+                    <li>Aggiunto tab "Riferimenti Tecnici" per Meccanici e Allestitori.</li>
+                    <li>Rimozione campo "Note" per pulizia database flotta.</li>
+                    <li>Aggiunta visibilità operatore e data precisa nelle segnalazioni guasti.</li>
+                    <li>Ottimizzata modale Changelog (ora cliccabile sullo sfondo e X maggiorata).</li>
                     <li>Rinnovamento grafico titolo in stile Control Tower.</li>
-                    <li>Aggiunta logica "Auto-Scambio" intelligente tra mezzi in caso di slot duplicati.</li>
-                    <li>Dashboard KPI segnalazioni resa cliccabile e reattiva per il filtraggio rapido.</li>
-                    <li>Reinserimento stato "FUORI SERVIZIO" come opzione illimitata.</li>
+                    <li>Aggiunta logica "Auto-Scambio" intelligente tra mezzi per evitare slot duplicati.</li>
+                    <li>Dashboard KPI segnalazioni reattiva per il filtraggio rapido.</li>
                 </ul>
             </div>
 
@@ -283,7 +270,7 @@
         <header class="app-header">
             <h1>ARGO <span class="control-tower-text">Control Tower</span></h1>
             <p class="subtitle">Regia Autoparco e Segnalazioni</p>
-            <p class="version-label" onclick="apriChangelog()">Rel. 1.0.4</p>
+            <p class="version-label" onclick="apriChangelog()">Rel. 1.0.2</p>
         </header>
 
         <div class="login-box" id="login-section">
@@ -342,9 +329,9 @@
     <script>
         const PIN_SEGRETO = "V3icoli-"; 
         
-        // --- URL FLOTTA ---
+        // --- URL FLOTTA (AGGIORNATO) ---
         const URL_CSV_FLOTTA = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRMtO9pbvrr-yz1xMwquFeonWlhrwz6R_01HXu0swxX6tqrNok0Xjr6KRfIdYRnnGx8ZvjIoN_9vMQi/pub?output=csv'; 
-        const URL_API_FLOTTA = 'https://script.google.com/macros/s/AKfycbxz8Y21Wzg2_LtdMUhVJO0oiVR1Y6NCS6i0I_atPJskpMdC21I60sPyfDvp1kKyihqSBA/exec'; 
+        const URL_API_FLOTTA = 'https://script.google.com/macros/s/AKfycbysTPWgc8eYnVfqwFwPlsqtKeT7-r98HvR0Xk7A9zrz32y552b2YmHb5afOWwTcJ4lq5w/exec'; 
 
         // --- URL SEGNALAZIONI ---
         const URL_CSV_SEGNALAZIONI = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT8wQ0jGLsUvO8VqP8SnyuLlar0zApUn1maRLMEWMFL2EFrv2LFcxGkLJ6X3vf4ilsDWPRAzHjcub-l/pub?output=csv';
@@ -460,7 +447,6 @@
                 const modello = mezzo[2] ? mezzo[2].trim() : 'N/D';
                 const targa = mezzo[3] ? mezzo[3].trim() : 'N/D';
                 
-                // Lettura dei campi: F(5), G(6), H(7)
                 const mecc1 = mezzo[5] && mezzo[5].trim() !== '' ? mezzo[5].trim() : 'N/D';
                 const mecc2 = mezzo[6] && mezzo[6].trim() !== '' ? mezzo[6].trim() : 'N/D';
                 const allestimento = mezzo[7] && mezzo[7].trim() !== '' ? mezzo[7].trim() : 'N/D';
@@ -512,7 +498,6 @@
             const formData = new URLSearchParams();
             formData.append('sigla', sigla);
             formData.append('stato', document.getElementById(`stato-${sigla}`).value);
-            // Il campo note non viene più appeso ai dati inviati.
 
             try {
                 await fetch(URL_API_FLOTTA, { method: 'POST', body: formData, mode: 'no-cors' });
@@ -680,7 +665,6 @@
                         const inCarico = Object.values(dif).some(v => typeof v === 'string' && v.trim().toLowerCase().includes('in carico'));
                         const dataIn = dif['Informazioni cronologiche'] || '';
                         
-                        // Estrazione Autore
                         const segnalatore = dif['Nome e Cognome'] || dif['Nome'] || dif['Chi segnala'] || dif['Chi segnala?'] || dif['Indirizzo e-mail'] || dif['Email'] || dif['Operatore'] || 'N/D';
 
                         let allegatoHtml = '';

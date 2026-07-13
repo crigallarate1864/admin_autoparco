@@ -274,7 +274,7 @@
         </header>
 
         <div class="login-box" id="login-section">
-            <button id="btn-login" class="btn-pin">🔒 Inserisci PIN Responsabile</button>
+            <button id="btn-login" class="btn-pin">🔓 Accedi alla Control Tower</button>
         </div>
 
         <div id="admin-panel">
@@ -327,8 +327,6 @@
     </div>
 
     <script>
-        const PIN_SEGRETO = "V3icoli-"; 
-        
         // --- URL FLOTTA (AGGIORNATO) ---
         const URL_CSV_FLOTTA = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRMtO9pbvrr-yz1xMwquFeonWlhrwz6R_01HXu0swxX6tqrNok0Xjr6KRfIdYRnnGx8ZvjIoN_9vMQi/pub?output=csv'; 
         const URL_API_FLOTTA = 'https://script.google.com/macros/s/AKfycbzTLh--HCYkAGEfv3Ywh3vaRZomJNDVALE3W9pa-gALucQZEedH-QyqR3wheoHXYaEO2w/exec'; 
@@ -362,16 +360,11 @@
         }
 
         document.getElementById('btn-login').addEventListener('click', () => {
-            const pin = prompt("🔒 Inserisci il PIN per sbloccare la Control Tower:");
-            if (pin === PIN_SEGRETO) {
-                document.getElementById('login-section').style.display = 'none';
-                document.getElementById('admin-panel').style.display = 'block';
-                
-                caricaDatiFlotta();
-                caricaDatiSegnalazioni();
-            } else if (pin !== null) {
-                alert("❌ PIN Errato.");
-            }
+            document.getElementById('login-section').style.display = 'none';
+            document.getElementById('admin-panel').style.display = 'block';
+            
+            caricaDatiFlotta();
+            caricaDatiSegnalazioni();
         });
 
         function setCaricamento(messaggio, stato) {
